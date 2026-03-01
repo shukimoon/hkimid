@@ -1,29 +1,43 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Cormorant Garamond", serif;
-  
-  --color-brand-purple: #1e40af; /* blue-800 */
-  --color-brand-purple-dark: #1e3a8a; /* blue-900 */
-  --color-brand-purple-light: #3b82f6; /* blue-500 */
+  --font-display: "Space Grotesk", sans-serif;
 }
 
 @layer base {
-  html {
-    scroll-behavior: smooth;
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
   }
 }
 
-.markdown-body {
-  @apply text-slate-700 leading-relaxed;
+.id-card-bg {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  position: relative;
+  overflow: hidden;
 }
 
-.markdown-body h1 {
-  @apply text-3xl font-bold mb-4 text-brand-purple;
+.id-card-bg::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0);
+  background-size: 24px 24px;
+  pointer-events: none;
 }
 
-.markdown-body p {
-  @apply mb-4;
+.id-card-bg::after {
+  content: "HKIMID";
+  position: absolute;
+  font-size: 15rem;
+  font-weight: 900;
+  color: rgba(255,255,255,0.02);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-15deg);
+  white-space: nowrap;
+  pointer-events: none;
 }
