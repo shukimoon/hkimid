@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@sanity/client';
 import imageUrlBuilder from '@sanity/image-url';
+import { Studio } from 'sanity';
+import sanityConfig from '../sanity.config.ts';
 import { 
   Globe, 
   Zap, 
@@ -615,13 +617,20 @@ const Footer = () => {
 };
 
 export default function App() {
+  const [isAdmin, setIsAdmin] = useState(false);
   const [sanityData, setSanityData] = useState<{ title?: string; imageUrl?: string; whitePaperUrl?: string }>({});
 
   useEffect(() => {
+    // 判斷是否訪問管理後台
+    if (window.location.pathname.startsWith('/admin')) {
+      setIsAdmin(true);
+      return;
+    }
+
     const fetchData = async () => {
       try {
-        // Query for a document that has title, mainImage, or whitePaperUrl
-        const query = `*[_type in ["post", "page", "siteSettings"] || (defined(title) && defined(mainImage))][0]{title, mainImage, whitePaperUrl}`;
+        // 抓取 siteSettings 類型的文檔
+        const query = `*[_type == "siteSettings"][0]{title, mainImage, whitePaperUrl}`;
         const result = await client.fetch(query);
         if (result) {
           setSanityData({
@@ -637,6 +646,14 @@ export default function App() {
 
     fetchData();
   }, []);
+
+  if (isAdmin) {
+    return (
+      <div className="h-screen">
+        <Studio config={sanityConfig} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen font-sans text-gray-900 selection:bg-blue-100 selection:text-blue-900">
