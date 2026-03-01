@@ -102,6 +102,36 @@ const MatrixBackground = () => {
   return <canvas ref={canvasRef} className="absolute inset-0 z-0 opacity-30" />;
 };
 
+// 智能 Logo 組件：處理非透明背景的 Logo
+const Logo = ({ src, isScrolled, className }: { src?: string, isScrolled?: boolean, className?: string }) => {
+  if (!src) {
+    return (
+      <div className={`w-10 h-10 bg-brand-purple rounded-full flex items-center justify-center text-white font-bold text-xl ${className}`}>
+        IM
+      </div>
+    );
+  }
+
+  // 核心技術：使用 mix-blend-mode 和 filter 來過濾掉棋盤格背景
+  // 在深色背景下，我們將 Logo 轉為純白並過濾掉黑色背景
+  // 在淺色背景下，我們使用 multiply 過濾掉白色背景
+  const style = !isScrolled 
+    ? { filter: 'brightness(0) invert(1)', mixBlendMode: 'lighten' as const }
+    : { mixBlendMode: 'multiply' as const };
+
+  return (
+    <div className={`relative flex items-center justify-center overflow-hidden ${className}`}>
+      <img 
+        src={src} 
+        alt="HKIMID Logo" 
+        className="h-full w-auto object-contain"
+        style={style}
+        referrerPolicy="no-referrer" 
+      />
+    </div>
+  );
+};
+
 const Navbar = ({ logoUrl }: { logoUrl?: string }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -124,16 +154,7 @@ const Navbar = ({ logoUrl }: { logoUrl?: string }) => {
     <nav className={`fixed w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-white/90 backdrop-blur-md shadow-md py-3' : 'bg-transparent py-5'}`}>
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          {logoUrl ? (
-            <img 
-              src={logoUrl} 
-              alt="HKIMID Logo" 
-              className="h-12 w-auto object-contain drop-shadow-md" 
-              referrerPolicy="no-referrer" 
-            />
-          ) : (
-            <div className="w-10 h-10 bg-brand-purple rounded-full flex items-center justify-center text-white font-bold text-xl">IM</div>
-          )}
+          <Logo src={logoUrl} isScrolled={isScrolled} className="h-12" />
           <div className="flex flex-col">
             <span className={`font-serif font-bold text-sm leading-tight ${isScrolled ? 'text-brand-purple' : 'text-white'}`}>香港創新模式與產業發展研究院</span>
             <span className={`text-[10px] leading-tight opacity-80 ${isScrolled ? 'text-brand-purple-light' : 'text-white'}`}>HK Institute of Innovation Models and Industry Development</span>
@@ -636,16 +657,7 @@ const Footer = ({ logoUrl }: { logoUrl?: string }) => {
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           <div className="col-span-1 lg:col-span-2">
             <div className="flex items-center gap-4 mb-6">
-              {logoUrl ? (
-                <img 
-                  src={logoUrl} 
-                  alt="HKIMID Logo" 
-                  className="h-16 w-auto object-contain brightness-110" 
-                  referrerPolicy="no-referrer" 
-                />
-              ) : (
-                <div className="w-12 h-12 bg-brand-purple rounded-full flex items-center justify-center text-white font-bold text-2xl">IM</div>
-              )}
+              <Logo src={logoUrl} isScrolled={true} className="h-16" />
               <div className="flex flex-col">
                 <span className="font-serif font-bold text-lg leading-tight">香港創新模式與產業發展研究院</span>
                 <span className="text-xs opacity-60">HK Institute of Innovation Models and Industry Development</span>
