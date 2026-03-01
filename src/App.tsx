@@ -289,7 +289,7 @@ const Strategy = () => {
   );
 };
 
-const Advantages = () => {
+const Advantages = ({ whitePaperUrl }: { whitePaperUrl?: string }) => {
   const advantages = [
     { title: "國家戰略級資源池", desc: "同時對接內地與香港及國際網絡的官方機構", icon: <Shield /> },
     { title: "資源優勢", desc: "唯一同時接入香港科技園+海外法國索菲亞科技園雙向孵化平臺", icon: <Users /> },
@@ -307,9 +307,20 @@ const Advantages = () => {
             <h2 className="text-3xl md:text-4xl font-bold mb-4">HK IMID 七大護航優勢</h2>
             <p className="text-blue-200 text-lg">全球頂尖機構為什麼選擇與我們同行</p>
           </div>
-          <button className="bg-white text-blue-900 px-6 py-3 rounded-full font-bold hover:bg-blue-50 transition-colors">
-            下載優勢白皮書
-          </button>
+          {whitePaperUrl ? (
+            <a 
+              href={whitePaperUrl} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="bg-white text-blue-900 px-6 py-3 rounded-full font-bold hover:bg-blue-50 transition-colors inline-block"
+            >
+              下載優勢白皮書
+            </a>
+          ) : (
+            <button className="bg-white text-blue-900 px-6 py-3 rounded-full font-bold hover:bg-blue-50 transition-colors">
+              下載優勢白皮書
+            </button>
+          )}
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {advantages.map((adv, i) => (
@@ -604,19 +615,19 @@ const Footer = () => {
 };
 
 export default function App() {
-  const [sanityData, setSanityData] = useState<{ title?: string; imageUrl?: string }>({});
+  const [sanityData, setSanityData] = useState<{ title?: string; imageUrl?: string; whitePaperUrl?: string }>({});
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Query for a document that has both title and mainImage
-        // We try common types like 'post', 'page', or just any document with these fields
-        const query = `*[_type in ["post", "page", "siteSettings"] || (defined(title) && defined(mainImage))][0]{title, mainImage}`;
+        // Query for a document that has title, mainImage, or whitePaperUrl
+        const query = `*[_type in ["post", "page", "siteSettings"] || (defined(title) && defined(mainImage))][0]{title, mainImage, whitePaperUrl}`;
         const result = await client.fetch(query);
         if (result) {
           setSanityData({
             title: result.title,
-            imageUrl: result.mainImage ? urlFor(result.mainImage).url() : undefined
+            imageUrl: result.mainImage ? urlFor(result.mainImage).url() : undefined,
+            whitePaperUrl: result.whitePaperUrl
           });
         }
       } catch (error) {
@@ -634,7 +645,7 @@ export default function App() {
         <Hero dynamicTitle={sanityData.title} dynamicImage={sanityData.imageUrl} />
         <About />
         <Strategy />
-        <Advantages />
+        <Advantages whitePaperUrl={sanityData.whitePaperUrl} />
         <Projects />
         <Partners />
         <Events />
