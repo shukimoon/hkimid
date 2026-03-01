@@ -23,6 +23,7 @@ import {
   Scissors
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import ProjectShowcase3D from './components/ProjectShowcase3D';
 
 // Sanity Client Configuration
 const client = createClient({
@@ -46,60 +47,88 @@ const MatrixBackground = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const characters = '01ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$+-*/=%"\'#&_(),.;:?!\\|{}<>[]^~';
-    const fontSize = 14;
-    const columns = canvas.width / fontSize;
-    const drops: number[] = [];
-
-    for (let i = 0; i < columns; i++) {
-      drops[i] = 1;
-    }
-
-    const draw = () => {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Favor blue for the code rain
-      ctx.font = `${fontSize}px monospace`;
-
-      for (let i = 0; i < drops.length; i++) {
-        const text = characters.charAt(Math.floor(Math.random() * characters.length));
-        
-        // Randomly switch between different shades of blue
-        if (Math.random() > 0.2) {
-          ctx.fillStyle = '#3b82f6'; // blue-500
-        } else {
-          ctx.fillStyle = '#60a5fa'; // blue-400
-        }
-
-        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-          drops[i] = 0;
-        }
-        drops[i]++;
-      }
-    };
-
-    const interval = setInterval(draw, 33);
-
-    const handleResize = () => {
+    let animationFrameId: number;
+    
+    const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     };
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Multiple layers for 3D depth effect
+    const layers = [
+      { fontSize: 12, speed: 0.8, opacity: 0.3, color: '#1e40af' }, // Far layer
+      { fontSize: 16, speed: 1.5, opacity: 0.5, color: '#3b82f6' }, // Middle layer
+      { fontSize: 22, speed: 2.5, opacity: 0.8, color: '#60a5fa' }, // Near layer
+    ];
+
+    const characters = '0101010101010101010101010101010101010101010101010101010101010101'; // More binary for "digital space"
+    
+    const layerData = layers.map(layer => {
+      const columns = Math.ceil(canvas.width / layer.fontSize);
+      return {
+        ...layer,
+        drops: Array(columns).fill(0).map(() => Math.random() * canvas.height / layer.fontSize)
+      };
+    });
+
+    const draw = () => {
+      // Clear with slight fade for trail effect
+      ctx.fillStyle = 'rgba(2, 6, 23, 0.1)'; // Matches slate-950
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      layerData.forEach(layer => {
+        ctx.font = `bold ${layer.fontSize}px monospace`;
+        
+        for (let i = 0; i < layer.drops.length; i++) {
+          const text = characters.charAt(Math.floor(Math.random() * characters.length));
+          
+          // Add glow effect
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = layer.color;
+          ctx.fillStyle = layer.color;
+          ctx.globalAlpha = layer.opacity;
+
+          const x = i * layer.fontSize;
+          const y = layer.drops[i] * layer.fontSize;
+
+          ctx.fillText(text, x, y);
+
+          // Reset drop if it reaches bottom or randomly
+          if (y > canvas.height && Math.random() > 0.98) {
+            layer.drops[i] = 0;
+          }
+          
+          layer.drops[i] += layer.speed * 0.5;
+        }
+      });
+
+      // Add a radial gradient overlay to create a "tunnel" focus
+      const gradient = ctx.createRadialGradient(
+        canvas.width / 2, canvas.height / 2, 0,
+        canvas.width / 2, canvas.height / 2, canvas.width * 0.8
+      );
+      gradient.addColorStop(0, 'rgba(2, 6, 23, 0)');
+      gradient.addColorStop(1, 'rgba(2, 6, 23, 0.8)');
+      ctx.fillStyle = gradient;
+      ctx.globalAlpha = 1;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      ctx.shadowBlur = 0; // Reset shadow for next frame
+      animationFrameId = requestAnimationFrame(draw);
+    };
+
+    draw();
 
     return () => {
-      clearInterval(interval);
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationFrameId);
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="absolute inset-0 z-0 opacity-30" />;
+  return <canvas ref={canvasRef} className="fixed inset-0 -z-10 pointer-events-none" />;
 };
 
 const Navbar = ({ logoUrl }: { logoUrl?: string }) => {
@@ -183,12 +212,9 @@ const Navbar = ({ logoUrl }: { logoUrl?: string }) => {
 
 const Hero = ({ dynamicTitle, dynamicImage }: { dynamicTitle?: string, dynamicImage?: string }) => {
   return (
-    <section className="relative h-screen flex items-center justify-center overflow-hidden bg-black">
-      {/* Matrix Background */}
-      <MatrixBackground />
-
+    <section className="relative h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image with Overlay */}
-      <div className="absolute inset-0 z-0 opacity-40">
+      <div className="absolute inset-0 z-0 opacity-20">
         <img 
           src={dynamicImage || "https://picsum.photos/seed/hk-skyline/1920/1080"} 
           alt="HK Skyline" 
@@ -243,7 +269,7 @@ const Hero = ({ dynamicTitle, dynamicImage }: { dynamicTitle?: string, dynamicIm
 
 const About = () => {
   return (
-    <section id="about" className="py-24 bg-white">
+    <section id="about" className="py-24 relative">
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid md:grid-cols-2 gap-16 items-center">
           <motion.div
@@ -251,34 +277,34 @@ const About = () => {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
           >
-            <div className="inline-block px-4 py-1 bg-brand-purple/10 text-brand-purple rounded-full text-sm font-bold mb-6">
+            <div className="inline-block px-4 py-1 bg-brand-purple/20 text-brand-purple-light rounded-full text-sm font-bold mb-6">
               研究院簡介
             </div>
-            <h2 className="font-serif text-3xl md:text-4xl font-bold text-gray-900 mb-8 leading-tight">
-              中國產業出海浪潮中的<br /><span className="text-brand-purple">超級樞紐</span>
+            <h2 className="font-serif text-3xl md:text-4xl font-bold text-white mb-8 leading-tight">
+              中國產業出海浪潮中的<br /><span className="text-brand-purple-light">超級樞紐</span>
             </h2>
-            <p className="text-gray-600 text-lg mb-6 leading-relaxed">
+            <p className="text-gray-400 text-lg mb-6 leading-relaxed">
               香港創新模式與產業發展研究院成立於2013年，依託香港特區政府各創科界機構持份者的科研支持，是香港特區最早專注於雙向產業轉移與深度孵化的研究機構。
             </p>
-            <p className="text-gray-600 text-lg mb-8 leading-relaxed">
+            <p className="text-gray-400 text-lg mb-8 leading-relaxed">
               作為國際的樞紐窗口，致力於為全球範圍內的企事業單位及科研創新團隊提供全方位、多層次的支持，為創業團隊提供全鏈條的孵化和服務。
             </p>
             <div className="grid grid-cols-2 gap-6">
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-brand-purple/5 rounded-lg text-brand-purple">
+                <div className="p-2 bg-brand-purple/20 rounded-lg text-brand-purple-light">
                   <TrendingUp size={20} />
                 </div>
                 <div>
-                  <h4 className="font-bold text-gray-900">賦能企業</h4>
+                  <h4 className="font-bold text-white">賦能企業</h4>
                   <p className="text-sm text-gray-500">助力增值升級轉型</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="p-2 bg-brand-purple/5 rounded-lg text-brand-purple">
+                <div className="p-2 bg-brand-purple/20 rounded-lg text-brand-purple-light">
                   <Globe size={20} />
                 </div>
                 <div>
-                  <h4 className="font-bold text-gray-900">全球佈局</h4>
+                  <h4 className="font-bold text-white">全球佈局</h4>
                   <p className="text-sm text-gray-500">雙向突破本土深耕</p>
                 </div>
               </div>
@@ -290,17 +316,17 @@ const About = () => {
             viewport={{ once: true }}
             className="relative"
           >
-            <div className="aspect-square bg-gray-100 rounded-3xl overflow-hidden shadow-2xl">
+            <div className="aspect-square bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-white/10">
               <img 
                 src="https://picsum.photos/seed/tech-lab/800/800" 
                 alt="Tech Lab" 
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover opacity-80"
                 referrerPolicy="no-referrer"
               />
             </div>
-            <div className="absolute -bottom-10 -left-10 bg-brand-purple text-white p-8 rounded-2xl shadow-xl hidden lg:block">
-              <div className="text-4xl font-bold mb-1">12+</div>
-              <div className="text-sm opacity-80">載科研積澱<br />深耕產業孵化</div>
+            <div className="absolute -bottom-10 -left-10 bg-brand-purple text-white p-8 rounded-2xl shadow-xl hidden lg:block border border-white/10">
+              <div className="text-4xl font-bold mb-1 text-white">12+</div>
+              <div className="text-sm opacity-80 text-white">載科研積澱<br />深耕產業孵化</div>
             </div>
           </motion.div>
         </div>
@@ -332,24 +358,24 @@ const Strategy = () => {
   ];
 
   return (
-    <section id="strategy" className="py-24 bg-gray-50">
+    <section id="strategy" className="py-24 relative">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-16">
-          <h2 className="font-serif text-3xl md:text-4xl font-bold text-gray-900 mb-4">核心戰略定位</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">順應國家戰略及未來科技發展需求，強化「超級增值人」功能</p>
+          <h2 className="font-serif text-3xl md:text-4xl font-bold text-white mb-4">核心戰略定位</h2>
+          <p className="text-gray-400 max-w-2xl mx-auto">順應國家戰略及未來科技發展需求，強化「超級增值人」功能</p>
         </div>
         <div className="grid md:grid-cols-3 gap-8">
           {strategies.map((s, i) => (
             <motion.div
               key={i}
               whileHover={{ y: -10 }}
-              className="bg-white p-10 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center text-center"
+              className="bg-white/5 backdrop-blur-sm p-10 rounded-3xl shadow-sm border border-white/10 flex flex-col items-center text-center"
             >
-              <div className={`w-16 h-16 rounded-2xl bg-brand-purple/10 text-brand-purple flex items-center justify-center mb-8`}>
+              <div className={`w-16 h-16 rounded-2xl bg-brand-purple/20 text-brand-purple-light flex items-center justify-center mb-8`}>
                 {s.icon}
               </div>
-              <h3 className="font-serif text-xl font-bold text-gray-900 mb-4">{s.title}</h3>
-              <p className="text-gray-500 leading-relaxed">{s.desc}</p>
+              <h3 className="font-serif text-xl font-bold text-white mb-4">{s.title}</h3>
+              <p className="text-gray-400 leading-relaxed">{s.desc}</p>
             </motion.div>
           ))}
         </div>
@@ -369,11 +395,11 @@ const Advantages = ({ whitePaperUrl }: { whitePaperUrl?: string }) => {
   ];
 
   return (
-    <section id="advantages" className="py-24 bg-brand-purple-dark text-white">
+    <section id="advantages" className="py-24 relative text-white">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
           <div className="max-w-2xl">
-            <h2 className="font-serif text-3xl md:text-4xl font-bold mb-4">HK IMID 七大護航優勢</h2>
+            <h2 className="font-serif text-3xl md:text-4xl font-bold mb-4">HK IMID 六大護航優勢</h2>
             <p className="text-brand-purple-light text-lg">全球頂尖機構為什麼選擇與我們同行</p>
           </div>
           {whitePaperUrl ? (
@@ -381,12 +407,12 @@ const Advantages = ({ whitePaperUrl }: { whitePaperUrl?: string }) => {
               href={whitePaperUrl} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="bg-white text-brand-purple px-6 py-3 rounded-full font-bold hover:bg-brand-purple-light/10 transition-colors inline-block"
+              className="bg-brand-purple text-white px-6 py-3 rounded-full font-bold hover:bg-brand-purple-dark transition-colors inline-block"
             >
               下載優勢白皮書
             </a>
           ) : (
-            <button className="bg-white text-brand-purple px-6 py-3 rounded-full font-bold hover:bg-brand-purple-light/10 transition-colors">
+            <button className="bg-brand-purple text-white px-6 py-3 rounded-full font-bold hover:bg-brand-purple-dark transition-colors">
               下載優勢白皮書
             </button>
           )}
@@ -399,7 +425,7 @@ const Advantages = ({ whitePaperUrl }: { whitePaperUrl?: string }) => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="bg-white/5 border border-white/10 p-8 rounded-2xl hover:bg-white/10 transition-all group"
+              className="bg-brand-purple/10 backdrop-blur-md border border-white/10 p-8 rounded-2xl hover:bg-brand-purple/20 transition-all group"
             >
               <div className="text-brand-purple-light mb-6 group-hover:scale-110 transition-transform">
                 {React.cloneElement(adv.icon as React.ReactElement<any>, { size: 32 })}
@@ -451,11 +477,11 @@ const Projects = () => {
   ];
 
   return (
-    <section id="projects" className="py-24 bg-white">
+    <section id="projects" className="py-24 relative">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-16">
-          <h2 className="font-serif text-3xl md:text-4xl font-bold text-gray-900 mb-4">重點科研項目</h2>
-          <p className="text-gray-600">以香港為核心樞紐，實現科技成果的深度轉化與增值</p>
+          <h2 className="font-serif text-3xl md:text-4xl font-bold text-white mb-4">重點科研項目</h2>
+          <p className="text-gray-400">以香港為核心樞紐，實現科技成果的深度轉化與增值</p>
         </div>
         <div className="grid lg:grid-cols-2 gap-12">
           {projects.map((p, i) => (
@@ -464,32 +490,32 @@ const Projects = () => {
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="flex flex-col md:flex-row bg-gray-50 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-gray-100"
+              className="flex flex-col md:flex-row bg-white/5 backdrop-blur-sm rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-white/10"
             >
               <div className="md:w-2/5 relative">
                 <img 
                   src={p.image} 
                   alt={p.title} 
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover opacity-70"
                   referrerPolicy="no-referrer"
                 />
-                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md p-3 rounded-xl text-brand-purple shadow-lg">
+                <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md p-3 rounded-xl text-brand-purple-light shadow-lg border border-white/10">
                   {p.icon}
                 </div>
               </div>
               <div className="md:w-3/5 p-8 flex flex-col">
                 <div className="flex flex-wrap gap-2 mb-4">
                   {p.tags.map(tag => (
-                    <span key={tag} className="px-3 py-1 bg-brand-purple/10 text-brand-purple text-xs font-bold rounded-full uppercase tracking-wider">
+                    <span key={tag} className="px-3 py-1 bg-brand-purple/20 text-brand-purple-light text-xs font-bold rounded-full uppercase tracking-wider">
                       {tag}
                     </span>
                   ))}
                 </div>
-                <h3 className="font-serif text-2xl font-bold text-gray-900 mb-4">{p.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed mb-6 flex-grow">
+                <h3 className="font-serif text-2xl font-bold text-white mb-4">{p.title}</h3>
+                <p className="text-gray-400 text-sm leading-relaxed mb-6 flex-grow">
                   {p.desc}
                 </p>
-                <button className="flex items-center gap-2 text-brand-purple font-bold hover:gap-4 transition-all">
+                <button className="flex items-center gap-2 text-brand-purple-light font-bold hover:gap-4 transition-all">
                   查看詳情 <ChevronRight size={18} />
                 </button>
               </div>
@@ -511,11 +537,11 @@ const Partners = () => {
   ];
 
   return (
-    <section id="partners" className="py-24 bg-gray-50 overflow-hidden">
+    <section id="partners" className="py-24 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-16">
-          <h2 className="font-serif text-3xl md:text-4xl font-bold text-gray-900 mb-4">全球聯合發起機構</h2>
-          <p className="text-gray-600">構建國際科創生態圈，實現雙向共贏</p>
+          <h2 className="font-serif text-3xl md:text-4xl font-bold text-white mb-4">全球聯合發起機構</h2>
+          <p className="text-gray-400">構建國際科創生態圈，實現雙向共贏</p>
         </div>
         
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -523,18 +549,18 @@ const Partners = () => {
             <motion.div
               key={i}
               whileHover={{ scale: 1.02 }}
-              className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100"
+              className="bg-white/5 backdrop-blur-sm p-8 rounded-2xl shadow-sm border border-white/10"
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-brand-purple/10 rounded-full flex items-center justify-center text-brand-purple">
+                <div className="w-10 h-10 bg-brand-purple/20 rounded-full flex items-center justify-center text-brand-purple-light">
                   <Network size={20} />
                 </div>
                 <div>
-                  <h4 className="font-serif font-bold text-gray-900">{partner.name}</h4>
-                  <p className="text-xs text-brand-purple font-medium">{partner.location}</p>
+                  <h4 className="font-serif font-bold text-white">{partner.name}</h4>
+                  <p className="text-xs text-brand-purple-light font-medium">{partner.location}</p>
                 </div>
               </div>
-              <p className="text-gray-500 text-sm leading-relaxed">
+              <p className="text-gray-400 text-sm leading-relaxed">
                 {partner.desc}
               </p>
             </motion.div>
@@ -542,12 +568,12 @@ const Partners = () => {
         </div>
 
         {/* Marquee-like effect for logos or more partners could go here */}
-        <div className="mt-20 pt-10 border-t border-gray-200">
-          <div className="flex flex-wrap justify-center items-center gap-12 opacity-50 grayscale hover:grayscale-0 transition-all">
-            <div className="text-2xl font-black tracking-tighter text-gray-400">TECH'HUB</div>
-            <div className="text-2xl font-black tracking-tighter text-gray-400">MEDV</div>
-            <div className="text-2xl font-black tracking-tighter text-gray-400">ZHONG XING WAN</div>
-            <div className="text-2xl font-black tracking-tighter text-gray-400">SWJTU</div>
+        <div className="mt-20 pt-10 border-t border-white/10">
+          <div className="flex flex-wrap justify-center items-center gap-12 opacity-30 grayscale hover:grayscale-0 transition-all">
+            <div className="text-2xl font-black tracking-tighter text-white">TECH'HUB</div>
+            <div className="text-2xl font-black tracking-tighter text-white">MEDV</div>
+            <div className="text-2xl font-black tracking-tighter text-white">ZHONG XING WAN</div>
+            <div className="text-2xl font-black tracking-tighter text-white">SWJTU</div>
           </div>
         </div>
       </div>
@@ -578,14 +604,14 @@ const Events = () => {
   ];
 
   return (
-    <section className="py-24 bg-white">
+    <section className="py-24 relative">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
           <div>
-            <h2 className="font-serif text-3xl md:text-4xl font-bold text-gray-900 mb-4">2025 研究院協同活動</h2>
-            <p className="text-gray-600">整合國際資源，為出海企業提供全週期服務</p>
+            <h2 className="font-serif text-3xl md:text-4xl font-bold text-white mb-4">2025 研究院協同活動</h2>
+            <p className="text-gray-400">整合國際資源，為出海企業提供全週期服務</p>
           </div>
-          <button className="text-brand-purple font-bold flex items-center gap-2">
+          <button className="text-brand-purple-light font-bold flex items-center gap-2">
             查看完整日曆 <ChevronRight size={20} />
           </button>
         </div>
@@ -596,18 +622,18 @@ const Events = () => {
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              className="group flex flex-col md:flex-row items-center gap-8 p-8 bg-gray-50 rounded-3xl hover:bg-brand-purple/10 transition-all border border-transparent hover:border-brand-purple/20"
+              className="group flex flex-col md:flex-row items-center gap-8 p-8 bg-white/5 backdrop-blur-sm rounded-3xl hover:bg-brand-purple/20 transition-all border border-white/10 hover:border-brand-purple/40"
             >
               <div className="flex-shrink-0 text-center md:text-left">
-                <div className="text-brand-purple font-black text-3xl">{e.date}</div>
-                <div className="text-gray-400 text-xs uppercase tracking-widest font-bold mt-1">Upcoming Event</div>
+                <div className="text-brand-purple-light font-black text-3xl">{e.date}</div>
+                <div className="text-gray-500 text-xs uppercase tracking-widest font-bold mt-1">Upcoming Event</div>
               </div>
               <div className="flex-grow">
-                <h3 className="font-serif text-xl font-bold text-gray-900 mb-2 group-hover:text-brand-purple transition-colors">{e.title}</h3>
-                <p className="text-gray-500 text-sm">{e.desc}</p>
+                <h3 className="font-serif text-xl font-bold text-white mb-2 group-hover:text-brand-purple-light transition-colors">{e.title}</h3>
+                <p className="text-gray-400 text-sm">{e.desc}</p>
               </div>
               <div className="flex-shrink-0">
-                <span className="px-4 py-2 bg-white rounded-full text-xs font-bold text-brand-purple shadow-sm border border-brand-purple/10">
+                <span className="px-4 py-2 bg-slate-900 rounded-full text-xs font-bold text-brand-purple-light shadow-sm border border-brand-purple/20">
                   {e.topic}
                 </span>
               </div>
@@ -732,12 +758,14 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen font-sans text-gray-900 selection:bg-brand-purple/20 selection:text-brand-purple">
+    <div className="min-h-screen bg-slate-950 font-sans text-gray-100 selection:bg-brand-purple/20 selection:text-brand-purple">
+      <MatrixBackground />
       <Navbar logoUrl={sanityData.logoUrl} />
-      <main>
+      <main className="relative z-10">
         <Hero dynamicTitle={sanityData.title} dynamicImage={sanityData.imageUrl} />
         <About />
         <Strategy />
+        <ProjectShowcase3D />
         <Advantages whitePaperUrl={sanityData.whitePaperUrl} />
         <Projects />
         <Partners />
