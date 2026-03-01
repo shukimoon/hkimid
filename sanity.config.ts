@@ -13,6 +13,12 @@ const siteSettings = {
       type: 'string',
     },
     {
+      name: 'logo',
+      title: '研究院 LOGO',
+      type: 'image',
+      options: { hotspot: true },
+    },
+    {
       name: 'subtitle',
       title: '首頁副標題',
       type: 'string',
