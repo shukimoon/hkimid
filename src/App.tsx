@@ -112,15 +112,15 @@ const Logo = ({ src, isScrolled, className }: { src?: string, isScrolled?: boole
     );
   }
 
-  // 核心技術：使用 mix-blend-mode 和 filter 來過濾掉棋盤格背景
-  // 在深色背景下，我們將 Logo 轉為純白並過濾掉黑色背景
-  // 在淺色背景下，我們使用 multiply 過濾掉白色背景
-  const style = !isScrolled 
-    ? { filter: 'brightness(0) invert(1)', mixBlendMode: 'lighten' as const }
-    : { mixBlendMode: 'multiply' as const };
+  // 核心技術：使用 mix-blend-mode: multiply
+  // 這會過濾掉圖片中的白色/淺灰色背景，讓其與背景色融合，同時保留 Logo 的原始顏色
+  const style = { 
+    mixBlendMode: 'multiply' as const,
+    filter: 'contrast(1.1) brightness(1.05)' // 稍微增強對比度以過濾淺灰色
+  };
 
   return (
-    <div className={`relative flex items-center justify-center overflow-hidden ${className}`}>
+    <div className={`relative flex items-center justify-center ${className}`}>
       <img 
         src={src} 
         alt="HKIMID Logo" 
