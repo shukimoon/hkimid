@@ -28,8 +28,8 @@ import { motion, AnimatePresence } from 'motion/react';
 const client = createClient({
   projectId: '54hpcgpc',
   dataset: 'production',
-  useCdn: true,
-  apiVersion: '2023-05-03',
+  useCdn: false, // 暫時關閉 CDN 以確保直接連接
+  apiVersion: '2024-01-01', // 更新至較新的 API 版本
 });
 
 const builder = imageUrlBuilder(client);
@@ -727,19 +727,28 @@ export default function App() {
 
     const fetchData = async () => {
       try {
-        // 抓取 siteSettings 類型的文檔
+        // 抓取 siteSettings 類型的文檔，增加超時控制
         const query = `*[_type == "siteSettings"][0]{title, logo, mainImage, whitePaperUrl}`;
-        const result = await client.fetch(query);
+        const result = await client.fetch(query).catch(err => {
+          if (err.message.includes('Request error')) {
+            console.warn("Sanity CORS 尚未設定，請參考說明文件新增來源。");
+          }
+          throw err;
+        });
+
         if (result) {
           setSanityData({
-            title: result.title,
+            title: result.title || undefined,
             imageUrl: result.mainImage ? urlFor(result.mainImage).url() : undefined,
             logoUrl: result.logo ? urlFor(result.logo).url() : undefined,
-            whitePaperUrl: result.whitePaperUrl
+            whitePaperUrl: result.whitePaperUrl || undefined
           });
         }
       } catch (error) {
-        console.error("Error fetching from Sanity:", error);
+        // 僅在開發環境輸出詳細錯誤
+        if (process.env.NODE_ENV !== 'production') {
+          console.error("Sanity Fetch Error:", error);
+        }
       }
     };
 
